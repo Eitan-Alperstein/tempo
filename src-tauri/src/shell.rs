@@ -198,13 +198,13 @@ pub fn spawn_background_loop<R: Runtime>(app: AppHandle<R>) {
                     let clock = format_clock(timer::remaining_sec(&s, now));
                     title = if s.paused_at.is_some() { format!("{clock} ⏸") } else { clock };
                 }
-                if tick % 30 == 0 {
+                if tick.is_multiple_of(30) {
                     match notify::claim_due(&conn, now, &Local) {
                         Ok(rs) => notes.extend(rs.into_iter().map(|r| (r.title, r.body))),
                         Err(e) => eprintln!("tempo: reminder check failed: {e}"),
                     }
                 }
-                if tick % 3600 == 0 {
+                if tick.is_multiple_of(3600) {
                     let _ = notify::prune_log(&conn, now);
                     let _ = repo::purge_deleted(&conn, now - Duration::days(7));
                 }

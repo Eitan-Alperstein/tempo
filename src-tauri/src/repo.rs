@@ -140,10 +140,8 @@ fn validate(input: &TaskInput) -> Result<()> {
     if input.title.trim().is_empty() {
         return Err(Error::Invalid("A task needs a title.".into()));
     }
-    if let Some(i) = input.importance {
-        if !(1..=5).contains(&i) {
-            return Err(Error::Invalid("Importance must be between 1 and 5.".into()));
-        }
+    if input.importance.is_some_and(|i| !(1..=5).contains(&i)) {
+        return Err(Error::Invalid("Importance must be between 1 and 5.".into()));
     }
     if matches!(input.estimate_min, Some(m) if m <= 0) {
         return Err(Error::Invalid("Estimate must be a positive number of minutes.".into()));

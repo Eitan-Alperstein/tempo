@@ -141,13 +141,23 @@ export const useStore = create<State & Actions>((set, get) => {
       tasks: t.completedAt ? s.tasks.filter((x) => x.id !== t.id) : s.tasks.some((x) => x.id === t.id) ? s.tasks.map((x) => (x.id === t.id ? t : x)) : [t, ...s.tasks],
     }));
 
-  // Run a backend call; surface failures instead of losing them.
+  // Run a backend call that returns data; surface failures instead of losing them.
   async function attempt<T>(fn: () => Promise<T>): Promise<T | null> {
     try {
       return await fn();
     } catch (e) {
       get().toast(errorMessage(e), { tone: "error" });
       return null;
+    }
+  }
+  // For commands that return nothing (they resolve to null), report success explicitly.
+  async function succeeded(fn: () => Promise<unknown>): Promise<boolean> {
+    try {
+      await fn();
+      return true;
+    } catch (e) {
+      get().toast(errorMessage(e), { tone: "error" });
+      return false;
     }
   }
 
@@ -232,8 +242,8 @@ export const useStore = create<State & Actions>((set, get) => {
     async setSetting(key, value) {
       const prev = get().settings[key];
       set((s) => ({ settings: { ...s.settings, [key]: value } }));
-      const ok = await attempt(() => api.setSetting(key, value));
-      if (ok === null) set((s) => ({ settings: { ...s.settings, [key]: prev } }));
+      const ok = await succeeded(() => api.setSetting(key, value));
+      if (!ok) set((s) => ({ settings: { ...s.settings, [key]: prev } }));
     },
 
     async createTask(input) {
@@ -294,7 +304,7 @@ export const useStore = create<State & Actions>((set, get) => {
     async deleteTask(id) {
       const t = get().tasks.find((x) => x.id === id);
       if (!t) return;
-      if ((await attempt(() => api.deleteTask(id))) === null) return;
+      if (!(await succeeded(() => api.deleteTask(id)))) return;
       set((s) => ({
         tasks: s.tasks.filter((x) => x.id !== id),
         detailId: s.detailId === id ? null : s.detailId,
@@ -318,13 +328,13 @@ export const useStore = create<State & Actions>((set, get) => {
       const merged = mergeOrder(full, visibleIds);
       const index = new Map(merged.map((id, i) => [id, i]));
       set((s) => ({ tasks: s.tasks.map((t) => ({ ...t, manualOrder: index.get(t.id) ?? t.manualOrder })) }));
-      if ((await attempt(() => api.reorderManual(merged))) === null) await get().reloadTasks();
+      if (!(await succeeded(() => api.reorderManual(merged)))) await get().reloadTasks();
     },
 
     async reorderPins(ids) {
       const index = new Map(ids.map((id, i) => [id, i + 1]));
       set((s) => ({ tasks: s.tasks.map((t) => (index.has(t.id) ? { ...t, pinOrder: index.get(t.id)! } : t)) }));
-      if ((await attempt(() => api.reorderPins(ids.map(String)))) === null) await get().reloadTasks();
+      if (!(await succeeded(() => api.reorderPins(ids)))) await get().reloadTasks();
     },
 
     async pinAt(taskId, pinnedIdsInOrder) {
@@ -365,7 +375,7 @@ export const useStore = create<State & Actions>((set, get) => {
     async reorderProjects(ids) {
       const index = new Map(ids.map((id, i) => [id, i]));
       set((s) => ({ projects: [...s.projects].sort((a, b) => (index.get(a.id) ?? 0) - (index.get(b.id) ?? 0)) }));
-      await attempt(() => api.reorderProjects(ids));
+      await succeeded(() => api.reorderProjects(ids));
     },
 
     async addSubtask(taskId, title) {
@@ -418,12 +428,20 @@ export const useStore = create<State & Actions>((set, get) => {
         await get().startFocus(id);
         return;
       }
-      const next = await attempt(s.pausedAt ? api.resumeSession : api.pauseSession);
-      if (next !== null) set({ session: next });
+      try {
+        set({ session: await (s.pausedAt ? api.resumeSession() : api.pauseSession()) });
+      } catch (e) {
+        get().toast(errorMessage(e), { tone: "error" });
+      }
     },
     async stopTimer() {
-      const stopped = await attempt(api.stopSession);
-      if (stopped === null) return;
+      let stopped;
+      try {
+        stopped = await api.stopSession();
+      } catch (e) {
+        get().toast(errorMessage(e), { tone: "error" });
+        return;
+      }
       set({ session: null });
       // Tracked time changed: refresh that task's total.
       if (stopped?.taskId) await get().reloadTasks();
