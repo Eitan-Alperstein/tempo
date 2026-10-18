@@ -1,0 +1,42 @@
+[package]
+name = "tempo"
+version = "0.1.0"
+description = "Tempo — a calm task manager for deciding what to do next"
+authors = ["Eitan"]
+edition = "2024"
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name.
+name = "tempo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-notification = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+uuid = { version = "1.28", features = ["v4"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", features = ["NSArray", "NSDate", "NSError", "NSString", "NSEnumerator", "NSPredicate"] }
+objc2-event-kit = { version = "0.3.2", features = ["EKEventStore", "EKEvent", "EKCalendarItem", "EKCalendar", "EKTypes", "EKObject", "block2"] }
+block2 = "0.6.2"
+
+[dev-dependencies]
+tempfile = "3.27"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Tempo shows your existing events in the day schedule so you don't plan work over them. Tempo never changes your calendar.</string>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Tempo shows your existing events in the day schedule so you don't plan work over them. Tempo never changes your calendar.</string>
+</dict>
+</plist>
